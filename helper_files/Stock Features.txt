@@ -1,0 +1,97 @@
+End of Day Endpoint from EODHD
+Date
+Open
+High
+Low
+Close
+Adjusted close
+Volume
+
+Individual Close var ATH: %
+National Close var ATH: %
+Industry Close var ATH: %
+Global Close var ATH: % (or S&P 500, STOXX 600)
+
+
+AVG_1w var WoW: %
+AVG_1M var MoM: %
+AVG_1Q var QoQ: %
+AVG_1Y var YoY: %
+AVG__50 Change Last: %
+AVG_200 Change Last: %
+
+CLS_1D var Close: %
+AVG_1w var Close: %
+AVG_1M var Close: %
+AVG_1Q var Close: %
+AVG_1Y var Close: %
+AVG__50 var Close: %
+AVG_200 var Close: %
+
+VOL_1D var Volume: %
+AVG_1w var Volume: %
+AVG_1M var Volume: %
+AVG_1Q var Volume: %
+AVG_1Y var Volume: %
+AVG_5Y var Volume: %
+
+MIN_1w var Low: %
+MIN_1M var Low: %
+MIN_1Q var Low: %
+MIN_1Y var Low: %
+MIN__50 var Low: %
+MIN_200 var Low: %
+
+MAX_1w var High: %
+MAX_1M var High: %
+MAX_1Q var High: %
+MAX_1Y var High: %
+MAX__50 var High: %
+MAX_200 var High: %
+
+RMS_1W
+RMS_1M
+RMS_1Q
+RMS_1Y
+
+
+Parameter/Strategy:
+Prediction Period: days
+Change Threshold: %
+Portfolio Value: double
+
+
+Testing:
+Randomly select 100 dates within the test period.
+
+Simulation 1:
+Chose the best stocks (5, 10, 25, 50, 100)
+Include broker fees and taxes
+Do nothing
+Value after 'Prediction Period'
+
+Simulation 2:
+Chose the best stocks (5, 10, 25, 50, 100)
+Daily check, sell dangerous stocks
+if remaining investment capital available, by new best stocks
+Include broker fees and taxes
+Value after 'Prediction Period'
+
+Simulation 3 (Monte Carlo):
+Randomly select the best stocks (5, 10, 25, 50, 100)
+Include broker fees and taxes
+Do nothing
+Value after 'Prediction Period'
+
+
+Project:
+prepare: get a list of symbols, loop to load available data from symbol.csv, fetch missing data and save symbol.csv
+train: get list of symbols, loop through symbols.csv, prepare data frame, train models, test models, simulate, save model and optimal parameters
+assess: load model(s), get list of symbols, get latest record, run prediction(s), save prediction_yyyy-mm-dd.csv
+trade: load portfolio.xlsx, load latest prediction, update sheet 'symbols 2 sell', update sheet 'symbols 2 buy', update sheet 'portfolio'
+
+Implementation:
+1. Create a Product Requirements Document (PRD) using the 'Create PRD Chate Mode' Agent
+2. Plan the implementation using 'Plan' Mode and build the skeleton of the Jupyter Notebook (use draft prompt)
+3. Implement code cells using 'GPT 5 Beast Mode' (use draft prompt)
+4. review and refine markdown cells
