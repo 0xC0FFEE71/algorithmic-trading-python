@@ -1,0 +1,52 @@
+{
+  "run_timestamp": "2026-04-18T20:33:57.475389Z",
+  "universe_csv_name": "DEMO_003",
+  "configuration": {
+    "LOOKBACK_YEARS": 6,
+    "MIN_HISTORY_DAYS": 252,
+    "MAX_MISSING_FRAC_PER_SYMBOL": 0.05,
+    "ROW_MISSING_POLICY": "drop",
+    "MIN_MEDIAN_VALUE_TRADED_20D": 1000000,
+    "NEAR_CONSTANT_STD_THRESHOLD": 1e-08,
+    "DROP_NEAR_CONSTANT_FEATURES": true,
+    "SAVE_PARQUET": true,
+    "SAVE_CSV": false,
+    "OUTPUT_BASENAME": "prepared_dataset"
+  },
+  "stage_counts": {
+    "raw_universe": {
+      "symbols": 3
+    },
+    "after_symbol_normalisation": {
+      "symbols": 3
+    },
+    "after_file_resolution": {
+      "symbols": 3
+    },
+    "after_schema_date_checks": {
+      "symbols": 3,
+      "rows": 4524
+    },
+    "after_quality_filtering": {
+      "symbols": 3,
+      "rows": 4524
+    },
+    "after_feature_alignment": {
+      "symbols": 3,
+      "rows": 3927
+    },
+    "after_label_assignment": {
+      "symbols": 3,
+      "rows": 3867
+    }
+  },
+  "exclusion_log": [],
+  "final_dataset": {
+    "n_rows": 3867,
+    "n_symbols": 3,
+    "n_feature_cols": 39,
+    "output_files": [
+      "C:\\Users\\fraggable\\DCC_Created\\Coding\\algorithmic-trading-python\\1\u2011month-direction-classifier\\2_prepare_data\\prepared_dataset.parquet"
+    ]
+  }
+}
