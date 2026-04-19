@@ -1,455 +1,414 @@
-# PRD: 1-Month Direction Classification Notebook
+# PRD: 1-month direction model evaluation notebook
 
 ## 1. Product overview
 
 ### 1.1 Document title and version
 
-- PRD: 1-Month Direction Classification Notebook
-- Version: 1.1
+- PRD: 1-month direction model evaluation notebook
+- Version: 1.0
 
 ### 1.2 Product summary
 
-This project delivers a single end-to-end Jupyter notebook that loads historical OHLCV stock data from per-symbol CSV files, engineers predictive features, trains and compares multiple machine learning models, and evaluates final performance on a hold-out test set. The notebook predicts 1-month directional actions as a 3-class problem: buy, hold/wait, or sell.
+This project defines a Jupyter notebook that trains and evaluates one machine learning model for the 1-month stock direction classifier. The notebook is designed as a reusable template: duplicating it and changing the model class, its hyperparameters, and a single `MODEL_NAME` identifier string is all that is needed to evaluate any of the 5–6 candidate classifiers.
 
-The target is based on forward 20-trading-day returns. Labels are fixed as: buy if return is greater than +5%, sell if return is less than -5%, and hold otherwise. The notebook uses a time-aware approach (no shuffling), pooled cross-sectional data across many symbols, and model comparison against benchmark algorithms.
+The notebook reads the already-prepared Parquet dataset from `1-month-direction-classifier/2_prepare_data`, splits it in a strictly time-aware fashion (no shuffling), trains the chosen model inside a scikit-learn Pipeline, evaluates it against a simple baseline, and writes all results to a standardized JSON artifact and optional CSV file under `1-month-direction-classifier/3_evaluate_model`. These artifacts are intentionally uniform across notebooks so a separate comparison step can load and rank all models without parsing free-form output.
 
-The universe is loaded from a symbol CSV file in the data folder under 1-month-direction-classifier. The CSV filename defines the matching subfolder containing per-symbol historical files (one CSV per symbol, for example AMZN.US.csv). The end-to-end output includes a clear recommendation of which evaluated model to use, why it was selected, and which hyperparameters to use.
+The notebook does not perform hyperparameter tuning. Tuning is the responsibility of a separate future notebook that uses `TimeSeriesSplit`-based search. This notebook records the chosen hyperparameters (even if they are defaults) so results are fully reproducible.
 
 ## 2. Goals
 
 ### 2.1 Business goals
 
-- Build a repeatable ML workflow to classify 1-month stock direction for many symbols.
-- Compare benchmark models under a consistent evaluation protocol.
-- Produce actionable diagnostics focused on buy and sell class quality.
-- Create a reusable research template that can be rerun as new data arrives.
+- Produce comparable, machine-readable evaluation artifacts for every candidate model.
+- Establish a rigorous baseline so model value over naive rules is always measured.
+- Enable parallel model development by making the template self-contained per notebook.
 
 ### 2.2 User goals
 
-- Run one notebook from start to finish without manual handoffs.
-- Load a symbol universe from CSV in the local data folder.
-- Train, validate, tune, and test models with time-aware data splits.
-- Understand model behavior via metrics, confusion matrices, and feature relevance.
-- Receive a final model recommendation that includes rationale and exact parameter settings.
-- Review a simple strategy-level diagnostic from predicted actions.
+- Run one notebook end-to-end to get train/validation/test performance for a single model.
+- Change as little as possible (model class + `MODEL_NAME`) to evaluate a different candidate.
+- Trust results because time-aware splits guarantee no future information leakage.
 
 ### 2.3 Non-goals
 
-- Full production trading system deployment.
-- Execution, slippage, fee, and market impact modeling.
-- Intraday prediction or tick-level microstructure modeling.
-- Causal inference about drivers of returns.
+- Hyperparameter search or cross-validated tuning (separate notebook).
+- Multi-model comparison or ranking (separate aggregation step).
+- Production deployment or inference pipelines.
+- Downloading or re-engineering data (handled by earlier notebooks).
 
 ## 3. User personas
 
 ### 3.1 Key user types
 
 - Quant researcher
-- Data scientist in finance
-- Advanced learner building portfolio ML skills
+- Retail systematic trader
+- Data scientist iterating on ML model selection
 
 ### 3.2 Basic persona details
 
-- **Quant researcher**: needs reproducible experiments and robust time-aware evaluation.
-- **Finance data scientist**: needs feature-rich pooled data modeling and comparative baselines.
-- **Advanced learner**: needs interpretable workflow with clear diagnostics and outputs.
+- **Quant researcher**: Needs rigorous, leakage-free evaluation and standardized metrics to compare model families fairly.
+- **Retail systematic trader**: Wants a clear template they can duplicate for each model with minimal code changes.
+- **Data scientist**: Uses saved JSON metrics artifacts to aggregate model performance programmatically.
 
 ### 3.3 Role-based access
 
-- **Notebook user**: can configure universe CSV, thresholds, model settings, and run all cells.
-- **Project maintainer**: can update feature set, model set, hyperparameter space, and evaluation outputs.
+- **Notebook operator**: Can configure model, execute all cells, and write evaluation artifacts to `3_evaluate_model`.
+- **Project maintainer**: Can modify the template notebook structure and result schema definitions.
 
 ## 4. Functional requirements
 
-- **Configurable universe loading from CSV** (Priority: High)
-  - Load symbol list from a user-selected CSV file in 1-month-direction-classifier/data.
-  - Enforce naming convention: if the symbol list is NAME.csv, historical per-symbol files are read from data/NAME/.
-  - Validate symbol file schema and report invalid rows.
+- **Notebook configuration and model identifier** (Priority: High)
+
+	- Expose a dedicated configuration section defining:
+		- Path to the prepared Parquet dataset (default: `1-month-direction-classifier/2_prepare_data/prepared_dataset.parquet`).
+		- Output directory for all evaluation artifacts (default: `1-month-direction-classifier/3_evaluate_model`).
+		- `MODEL_NAME` string used in all output file names (for example, `hist_gradient_boosting_baseline`).
+		- Random seed(s) for reproducibility.
+	- Document that changing `MODEL_NAME` and the model configuration in Section 6 is the only edit required to adapt the notebook for a different candidate.
+
+- **Library imports** (Priority: High)
+
+	- Import `pandas`, `numpy`, `pathlib`, `json`, `time`, `matplotlib`, `seaborn`, and all required scikit-learn components.
+	- Import at the top of the notebook in a single dedicated cell.
+
+- **Dataset loading and validation** (Priority: High)
+
+	- Load the single Parquet file into `df_raw`.
+	- Verify that all expected raw columns and engineered feature columns are present, including `label`.
+	- Verify that `date` is parsed as a datetime type.
+	- Print overall shape, date range, and number of unique symbols as a quick sanity check.
+
+- **Feature and target selection** (Priority: High)
+
+	- Explicitly define the list of feature columns: all engineered predictors except `fwd_ret_20d`, `label`, `symbol`, and `date`.
+	- Create `X` (features DataFrame), `y` (target Series), and a `meta` DataFrame retaining `symbol` and `date`.
+	- Remove rows where `label` is missing or not in `{buy, hold, sell}`.
+	- Remove rows where any required feature is NaN.
+	- Report remaining row count and class distribution after cleaning.
+
+- **Time-aware train/validation/test split** (Priority: High)
+
+	- Sort the dataset by `date` (then `symbol` for stability) before splitting.
+	- Split chronologically with no shuffling:
+		- Train: earliest ~70% of the time span.
+		- Validation: next ~15%.
+		- Test: most recent ~15%.
+	- Record actual split boundary dates in named variables (`train_end_date`, `val_end_date`, `test_start_date`, `test_end_date`).
+	- Create `X_train`, `y_train`, `X_val`, `y_val`, `X_test`, `y_test`.
+	- Confirm no date overlap between splits.
+	- Log row counts and class distributions for each split.
+
+- **Baseline classifier** (Priority: High)
+
+	- Define a trivial baseline (for example: always predict the majority class from the training set).
+	- Evaluate the baseline on both validation and test sets.
+	- Compute macro F1, weighted F1, balanced accuracy, per-class precision/recall/F1, and confusion matrix.
+	- Store results in a `baseline_results` dictionary in the same schema as model results.
+
+- **Model definition inside a scikit-learn Pipeline** (Priority: High)
+
+	- Specify the model class and all key hyperparameters explicitly (even if defaults are kept).
+	- Document whether the model requires feature scaling and configure accordingly:
+		- Models requiring scaling (Logistic Regression, LinearSVC, MLPClassifier): include `StandardScaler` fitted on training data only.
+		- Tree-based models (RandomForest, ExtraTrees, HistGradientBoosting): no scaling step.
+	- Build a `Pipeline` that encapsulates preprocessing and the estimator to prevent any data leakage.
+	- Document `class_weight` strategy used to handle `hold`-class dominance.
 
-- **Historical data ingestion from per-symbol files** (Priority: High)
-  - Load one CSV per symbol using file naming convention SYMBOL.csv.
-  - Restrict data to last 6 years from latest available trading date.
-  - Enforce expected raw columns: date, open, high, low, close, adj_close, volume.
+- **Model training** (Priority: High)
+
+	- Fit the pipeline on `X_train` and `y_train`.
+	- Record approximate training duration.
+	- Note any convergence warnings or other diagnostics.
 
-- **Data quality checks and filtering** (Priority: High)
-  - Detect duplicates, missing values, non-monotonic dates, and implausible negative values.
-  - Apply missing value policy and symbol-level exclusions for excessive missingness.
-  - Apply minimum history and liquidity filters before modeling.
+- **Validation performance evaluation** (Priority: High)
 
-- **Feature engineering pipeline** (Priority: High)
-  - Compute per-symbol features (returns, trend, volatility, volume/liquidity, technical signals).
-  - Align all features by symbol-date and remove rows lacking required feature history.
-  - Identify near-constant features for optional removal.
+	- Predict class labels (`y_val_pred`) and, where available, class probabilities (`y_val_proba`) on the validation set.
+	- Compute and display:
+		- Macro F1.
+		- Weighted F1.
+		- Balanced accuracy.
+		- Per-class precision, recall, and F1 for `buy`, `hold`, and `sell`.
+		- Confusion matrix.
+	- Store all metrics in a Python dict `val_metrics` keyed by metric name.
+	- Display a normalized confusion matrix heatmap and a class-wise F1 bar chart as optional diagnostic plots.
 
-- **Target labeling** (Priority: High)
-  - Compute forward 20-trading-day return per symbol.
-  - Apply fixed label rules: buy if > +5%, sell if < -5%, else hold.
-  - Drop rows where forward return is undefined.
+- **Test performance evaluation** (Priority: High)
 
-- **Time-aware data splitting and CV** (Priority: High)
-  - Chronological split into train (~70%), validation (~15%), test (~15%).
-  - Record split cutoff dates in notebook output.
-  - Use TimeSeriesSplit for tuning within train plus validation horizon.
+	- Predict class labels (`y_test_pred`) and optionally class probabilities (`y_test_proba`) on the test set.
+	- Compute the same metric set as for validation.
+	- Store in a dict `test_metrics` using the same schema as `val_metrics`.
+	- For the initial template notebook, use the model trained on `X_train` only (Option A) and document the choice clearly.
 
-- **Model training and comparison** (Priority: High)
-  - Train baseline and candidate models: Logistic Regression, Random Forest, Extra Trees, HistGradientBoosting, LinearSVC, MLP.
-  - Use pipelines to prevent leakage and apply scaling only where needed.
-  - Rank models by validation macro F1 and buy or sell class performance.
+- **Standardized result packaging and saving** (Priority: High)
 
-- **Hyperparameter tuning and final model freeze** (Priority: Medium)
-  - Select top two models from first-pass validation.
-  - Run moderate time-aware hyperparameter search.
-  - Freeze chosen model and parameter set for final test evaluation.
+	- Build a single result dict with the following top-level keys:
+		- `model_name`: value of `MODEL_NAME`.
+		- `model_type`: full scikit-learn class name string.
+		- `hyperparameters`: dict of model params from `get_params()`.
+		- `data`: date range and row count information for all three splits.
+		- `class_labels`: `["buy", "hold", "sell"]`.
+		- `baseline`: nested `val` and `test` metric dicts.
+		- `metrics`: nested `val` and `test` metric dicts.
+		- `notes`: label definition, buy/sell thresholds, class weight strategy.
+	- Serialize the result dict to a JSON file at `3_evaluate_model/{MODEL_NAME}_metrics.json`.
+	- Optionally save test-set predictions (with `symbol`, `date`, `y_true`, `y_pred`) to `3_evaluate_model/{MODEL_NAME}_test_predictions.csv`.
+	- Optionally pickle the trained model to `3_evaluate_model/{MODEL_NAME}_model.pkl`.
 
-- **Evaluation and strategy diagnostics** (Priority: High)
-  - Report macro F1, weighted F1, balanced accuracy, class-wise precision/recall/F1.
-  - Produce confusion matrices for validation and test.
-  - Include a simple long/flat/short cumulative return diagnostic on test predictions.
+- **Notebook summary section** (Priority: High)
 
-- **Recommendation output** (Priority: High)
-  - At the end of the run, produce a clear recommended model from evaluated candidates.
-  - Provide explicit rationale for the recommendation (metric performance, class-wise behavior, stability, and complexity or runtime trade-offs).
-  - Print and save the exact chosen hyperparameters needed to reproduce the final model.
+	- Summarize the chosen model, key hyperparameters, and macro F1 / class-wise metrics for validation and test.
+	- Compare results to baseline.
+	- Document how to duplicate the notebook for another model.
 
-- **Run reporting and artifacts** (Priority: Medium)
-  - Save summary tables for splits, class balance, model metrics, selected model settings, and final recommendation.
-  - Optionally save trained model artifact and feature importance outputs.
+## 5. User experience
 
-- **Security and configuration hygiene** (Priority: Medium)
-  - Keep secrets out of notebook outputs.
-  - Load API keys or sensitive config from config.py or environment variables when required.
+### 5.1 Entry points and first-time user flow
 
-## 5. Feature engineering
+- Open `1-month-direction-classifier/3_evaluate_model/evaluate_model.ipynb`.
+- Set `MODEL_NAME` and model configuration in the configuration cell.
+- Verify the Parquet input path points to the correct prepared dataset.
+- Run all cells top to bottom.
+- Review validation and test metrics, confusion matrix plots, and saved artifact paths.
 
-### 5.1 Base return and range features
+### 5.2 Core experience
 
-- **Daily returns**
-  - ret_1d: simple daily return from close.
-  - log_ret_1d: log return.
+- **Configure and import**: User sets `MODEL_NAME` and libraries are loaded in one cell.
+	- Ensures the rest of the notebook uses consistent identifiers and paths.
+- **Load and validate dataset**: Notebook reads Parquet and confirms schema.
+	- Catches schema drift from a re-run of the preparation notebook before training starts.
+- **Split data chronologically**: Notebook slices train/validation/test by date with no shuffling.
+	- Prevents future information leakage, which would invalidate all reported metrics.
+- **Train model in Pipeline**: Notebook fits a leakage-safe Pipeline on training data.
+	- Scaling is applied after splitting so validation and test data are never seen during `fit`.
+- **Evaluate and compare to baseline**: Notebook reports all metrics and compares against the trivial baseline.
+	- Ensures any claimed model lift is measured against a meaningful reference.
+- **Save standardized artifacts**: Notebook writes JSON metrics and optional prediction CSV.
+	- Enables downstream comparison across all candidate models.
 
-- **Ranges**
-  - tr_range: high - low.
-  - true_range: max of range and gaps vs previous close (for volatility).
+### 5.3 Advanced features and edge cases
 
-### 5.2 Multi-horizon return features
+- Class imbalance dominated by `hold`: handle via `class_weight` parameter and report balanced accuracy alongside F1.
+- Models that do not support `predict_proba` (for example, `LinearSVC`): skip probability output gracefully without error.
+- Empty validation or test splits due to unusual date distributions: surface a clear error before attempting evaluation.
+- `MODEL_NAME` containing path-unsafe characters: sanitize or document naming constraints.
 
-- **Short and medium horizon returns**
-  - ret_5d, ret_10d, ret_20d, ret_60d.
-  - log_ret_5d, log_ret_20d.
+### 5.4 UI/UX highlights
 
-- **Design note**
-  - These capture momentum at different horizons and are key predictors for a 1-month label.
+- Single configuration block at the top of the notebook for all user-facing settings.
+- Printed sanity checks after data load, after splitting, and after training.
+- Confusion matrix heatmap and class-wise bar chart as inline notebook outputs.
+- Clear summary cell at the end stating key numbers and next steps.
 
-### 5.3 Trend features (moving averages and relative position)
+## 6. Narrative
 
-- **Moving averages**
-  - sma_5, sma_20, sma_50, sma_200 on close.
+The user opens the evaluation notebook template, sets `MODEL_NAME` to `hist_gradient_boosting_baseline`, and runs all cells. The notebook loads the prepared Parquet dataset, confirms schema, drops the small fraction of rows with missing features or labels, and splits the data strictly by calendar date into train, validation, and test. A trivial majority-class baseline is evaluated first to anchor expectations. The chosen model is wrapped in a scikit-learn Pipeline and fitted on training data. Validation metrics reveal macro F1 and per-class performance; a normalized confusion matrix shows where the model confuses `buy` with `hold`. Test metrics confirm whether validation results hold on unseen data. All numbers are serialized to a JSON file named after the model. To evaluate `random_forest_baseline`, the user duplicates the notebook, changes `MODEL_NAME` and the model configuration block, and runs again. A future aggregation step loads every JSON artifact and produces the final comparison table.
 
-- **Relative-position features**
-  - close_over_sma_20, close_over_sma_50, close_over_sma_200 as close / sma_x.
+## 7. Success metrics
 
-- **Trend slope approximations**
-  - sma_20_slope_5d, sma_50_slope_5d: relative change in SMA over last 5 days.
+### 7.1 User-centric metrics
 
-### 5.4 Volatility features
+- Notebook runs end-to-end without errors on any valid prepared dataset.
+- Duplicating the notebook and changing `MODEL_NAME` is sufficient to evaluate a new model with zero other required changes.
+- Saved JSON artifact is parseable and contains all required fields without manual post-processing.
 
-- **Rolling return volatility**
-  - vol_ret_5d, vol_ret_20d, vol_ret_60d: rolling std of ret_1d over respective windows.
+### 7.2 Business metrics
 
-- **True-range volatility**
-  - vol_tr_5d, vol_tr_20d: rolling std of true_range.
+- Evaluated models demonstrate measurable macro F1 lift over the trivial baseline on the test set.
+- All candidate models are evaluated using identical split dates and metric schemas for fair comparison.
 
-### 5.5 Volume and liquidity features
+### 7.3 Technical metrics
 
-- **Base and rolling volume**
-  - value_traded: close * volume.
-  - vol_ma_20, vol_ma_60: moving averages of volume.
-  - vol_rel_20: volume / vol_ma_20.
-  - value_traded_ma_20, value_traded_rel_20: similar for value_traded.
+- Zero data leakage: validation and test data are never seen by any `fit` call.
+- Confusion matrix row sums match split class counts.
+- JSON artifact passes schema validation against the defined result structure.
 
-- **Rationale**
-  - These help capture unusual trading activity or illiquidity.
+## 8. Technical considerations
 
-### 5.6 Technical indicators
+### 8.1 Integration points
 
-- **RSI**
-  - rsi_14: 14-day RSI on close.
+- Input dataset: `1-month-direction-classifier/2_prepare_data/prepared_dataset.parquet`.
+- Output metrics JSON: `1-month-direction-classifier/3_evaluate_model/{MODEL_NAME}_metrics.json`.
+- Optional output CSV: `1-month-direction-classifier/3_evaluate_model/{MODEL_NAME}_test_predictions.csv`.
+- Optional output model pickle: `1-month-direction-classifier/3_evaluate_model/{MODEL_NAME}_model.pkl`.
+- All output paths are derived from `MODEL_NAME` so files from different model notebooks never collide.
 
-- **MACD**
-  - macd: EMA 12 - EMA 26.
-  - macd_signal: 9-day EMA of macd.
-  - macd_hist: difference between MACD and signal.
+### 8.2 Data storage and privacy
 
-- **ATR**
-  - atr_14: 14-day Average True Range (EMA of true_range).
+- Local filesystem storage only.
+- No PII in the dataset.
+- Pickled model files should be treated as local research artifacts and not shared without review.
 
-### 5.7 High/low context
+### 8.3 Scalability and performance
 
-- **Rolling highs and lows**
-  - hh_20d, ll_20d: 20-day highest high and lowest low.
-  - dist_from_20d_high: (close / hh_20d) - 1.
-  - dist_from_20d_low: (close / ll_20d) - 1.
+- Use scikit-learn's `n_jobs=-1` where available to parallelize training on multi-core machines.
+- For large universes (S&P 500+, 6 years), expect training times in the range of seconds to a few minutes depending on model.
+- Parquet read is fast; no streaming or chunked loading is needed at this data scale.
 
-### 5.8 Feature consolidation and final dataset
+### 8.4 Potential challenges
 
-- **How to merge all features**
-  - Ensure features for each symbol are aligned by date.
-  - Drop rows where any required feature cannot be computed due to insufficient history.
+- Severe class imbalance (hold dominates): macro F1 may be misleading without balanced accuracy as a cross-check.
+- Tree-based models with very deep trees may overfit on training data; document validation vs training F1 gap.
+- `TimeSeriesSplit` for tuning (future notebook) requires the combined train+validation set, so split boundary dates must be preserved.
+- Serializing numpy types (for example, `int64`, `float32`) to JSON requires a custom encoder or explicit conversion to Python native types.
 
-- **Feature sanity checks**
-  - Inspect distributions and correlations.
-  - Check for constant or near-constant features to potentially drop.
+## 9. Milestones and sequencing
 
-## 6. User experience
+### 9.1 Project estimate
 
-### 6.1 Entry points and first-time user flow
+- Small: 2-3 working days
 
-- User opens notebook in 1-month-direction-classifier/train.
-- User selects universe CSV path in data folder and confirms date horizon.
-- User runs notebook top-to-bottom in one execution.
-- User reviews data quality summary, feature readiness, model comparison, final recommendation, and strategy diagnostics.
+### 9.2 Team size and composition
 
-### 6.2 Core experience
+- 1 person: notebook developer (plus optional peer review)
 
-- **Configure and validate inputs**: user sets paths and key parameters; notebook validates schema and files.
-  - This ensures immediate visibility into broken inputs before expensive training starts.
-- **Prepare modeling dataset**: notebook cleans, filters, engineers features, and constructs labels.
-  - This ensures features and targets are aligned and leakage-safe.
-- **Train and compare models**: notebook runs baseline and candidate models with consistent metrics.
-  - This ensures fair model comparison and transparent model ranking.
-- **Tune finalists and evaluate test set**: notebook tunes top models and runs untouched hold-out test.
-  - This ensures realistic performance estimates.
-- **Recommend final model and parameters**: notebook outputs the selected model name, why it was chosen, and the exact parameter set.
-  - This ensures the notebook ends with a directly actionable decision.
-- **Review strategy diagnostics**: notebook maps predictions to long/flat/short and plots cumulative returns.
-  - This ensures model quality is interpreted in an action-oriented context.
+### 9.3 Suggested phases
 
-### 6.3 Advanced features and edge cases
+- **Phase 1**: Notebook scaffold, configuration, data load, and split (0.5 day)
+	- Key deliverables: config cell, Parquet load, schema check, chronological split with sanity checks.
+- **Phase 2**: Baseline and model training (0.5 day)
+	- Key deliverables: majority-class baseline, Pipeline definition and fit for one candidate model.
+- **Phase 3**: Evaluation and artifacts (1 day)
+	- Key deliverables: validation metrics, test metrics, confusion matrix plots, JSON save, prediction CSV save.
+- **Phase 4**: Summary section and template documentation (0.5 day)
+	- Key deliverables: summary cell, duplication instructions, file naming convention documentation.
 
-- Handle sparse symbol histories and drop non-compliant symbols.
-- Handle rolling-window warm-up periods for long lookback features.
-- Handle severe class imbalance with class weights and threshold review diagnostics.
-- Handle missing per-symbol files while continuing execution with warnings.
-- Handle unstable metrics in low-sample periods by reporting per-year class support.
+## 10. User stories
 
-### 6.4 UI and UX highlights
-
-- Clear sectioned notebook structure matching data-to-model lifecycle.
-- Compact validation prints and summary tables for each stage.
-- Plot outputs for class balance, confusion matrices, and strategy curves.
-- Deterministic ordering and reproducible random seeds.
-- Final decision block with recommendation, rationale, and full parameter dictionary.
-
-## 7. Narrative
-
-The user selects a universe CSV from the data folder and runs the notebook once end-to-end. The notebook ingests and validates six years of per-symbol OHLCV history, filters symbols by quality and liquidity, and builds a pooled feature matrix with forward 20-day labels. It then performs time-aware model comparison, tunes top candidates, and evaluates finalists on a hold-out test horizon. The output includes ML metrics, strategy diagnostics, and a final explicit recommendation that states which model to use, why it is preferred, and which exact hyperparameters to apply.
-
-## 8. Success metrics
-
-### 8.1 User-centric metrics
-
-- Notebook completes end-to-end run without manual intervention.
-- All stage summaries are generated (data quality, class balance, model scores, and recommendation block).
-- Final outputs are understandable and reproducible with fixed seeds.
-
-### 8.2 Business metrics
-
-- Final model outperforms majority-class baseline on macro F1 by a meaningful margin.
-- Buy and sell class F1 exceed minimum acceptable thresholds defined by the team.
-- Strategy diagnostic indicates improvement over naive hold-only baseline.
-
-### 8.3 Technical metrics
-
-- Primary metric: macro F1 on validation and test.
-- Secondary metrics: weighted F1, balanced accuracy, class-wise precision/recall/F1.
-- Data quality pass rate: percentage of symbols retained after filtering.
-- Runtime and memory usage within acceptable notebook limits.
-- Recommendation reproducibility: selected model parameters are fully logged and serializable.
-
-## 9. Technical considerations
-
-### 9.1 Integration points
-
-- Universe list file in 1-month-direction-classifier/data.
-- Per-symbol OHLCV archives in matching data subfolder named after universe CSV.
-- Existing configuration patterns (config.py, local paths, and environment variables).
-
-### 9.2 Data storage and privacy
-
-- Inputs and outputs remain local in project directories.
-- No sensitive credentials written to notebook outputs.
-- Respect .gitignore rules for generated data artifacts where applicable.
-
-### 9.3 Scalability and performance
-
-- Use vectorized pandas operations and groupby-by-symbol transformations.
-- Avoid redundant recomputation by caching intermediate frames in memory.
-- Keep hyperparameter searches moderate to preserve notebook runtime.
-
-### 9.4 Potential challenges
-
-- Class imbalance from fixed +-5% thresholds.
-- Regime shifts reducing model stability over time.
-- Data quality heterogeneity across symbols and exchanges.
-- Overfitting risk during tuning without strict chronological validation.
-
-## 10. Milestones and sequencing
-
-### 10.1 Project estimate
-
-- Medium: 1 to 2 weeks
-
-### 10.2 Team size and composition
-
-- 1 to 2 people: quant or data scientist, optional reviewer
-
-### 10.3 Suggested phases
-
-- **Phase 1**: Data ingestion, cleaning, and filtering (2 to 3 days)
-  - Key deliverables: validated pooled dataset and universe summary.
-- **Phase 2**: Feature and target engineering (2 to 3 days)
-  - Key deliverables: complete feature matrix and class balance diagnostics.
-- **Phase 3**: Baseline and candidate model training (2 days)
-  - Key deliverables: validation leaderboard and shortlisted models.
-- **Phase 4**: Tuning, recommendation output, final test, and strategy diagnostics (2 to 3 days)
-  - Key deliverables: final model recommendation with rationale and parameters, confusion matrices, and action-level return chart.
-
-## 11. User stories
-
-### 11.1 Configure and run notebook end-to-end
+### 10.1 Configure notebook for a single model
 
 - **ID**: GH-001
-- **Description**: As a notebook user, I want to run one notebook from start to finish so I can ingest data, train models, and see final test results in one execution.
+- **Description**: As a notebook operator, I want a single configuration block where I set `MODEL_NAME` and model hyperparameters so I can adapt the template for any candidate model without editing scattered code.
 - **Acceptance criteria**:
-  - Notebook executes top-to-bottom without requiring out-of-band scripts.
-  - Required inputs are validated before model training begins.
-  - End-of-run summary includes selected model and final test metrics.
+	- A dedicated configuration cell at the top defines `MODEL_NAME`, dataset path, output directory, and random seed.
+	- Changing `MODEL_NAME` causes all output file names to update automatically.
+	- No hardcoded model-specific values appear outside the configuration and model definition cells.
 
-### 11.2 Select universe from CSV in data folder
+### 10.2 Load and validate the prepared dataset
 
 - **ID**: GH-002
-- **Description**: As a user, I want to choose any valid universe CSV from the data folder so I can run the notebook on different symbol sets without rewriting logic.
+- **Description**: As a user, I want the notebook to load and validate the prepared Parquet dataset so I am confident the input matches expectations before any training begins.
 - **Acceptance criteria**:
-  - User can point to a symbol CSV file in 1-month-direction-classifier/data.
-  - If the symbol list is NAME.csv, the notebook reads historical files from data/NAME/.
-  - Invalid or missing symbol rows are reported and excluded.
+	- Notebook reads the Parquet file into `df_raw` using the configured path.
+	- Presence of all expected raw and engineered feature columns, including `label`, is verified.
+	- `date` column dtype is confirmed as datetime.
+	- Shape, date range, and unique symbol count are printed.
+	- Missing columns raise a descriptive error before any downstream cell runs.
 
-### 11.3 Enforce six-year rolling horizon
+### 10.3 Select features, target, and clean the dataset
 
 - **ID**: GH-003
-- **Description**: As a user, I want the notebook to use the latest six years of data so models stay relevant to current regimes.
+- **Description**: As a user, I want features and target explicitly separated and rows with invalid labels or missing feature values removed so the model trains on clean data.
 - **Acceptance criteria**:
-  - Date range is computed from latest available trading date minus six years.
-  - Rows outside the horizon are excluded before feature engineering.
-  - Notebook prints actual start and end dates used.
+	- Feature list excludes `fwd_ret_20d`, `label`, `symbol`, and `date`.
+	- `y` contains only `buy`, `hold`, or `sell` values; rows with other or null labels are dropped.
+	- Rows with any NaN in the feature set are dropped.
+	- Remaining row count and class distribution are printed.
 
-### 11.4 Apply data quality and liquidity filters
+### 10.4 Split data chronologically without shuffling
 
 - **ID**: GH-004
-- **Description**: As a user, I want poor-quality symbols excluded so model training data is reliable.
+- **Description**: As a user, I want a strictly time-aware train/validation/test split so no future information leaks into training.
 - **Acceptance criteria**:
-  - Symbols failing minimum history threshold are excluded.
-  - Symbols failing median volume threshold are excluded.
-  - Final universe count and pooled row count are reported.
+	- Dataset is sorted by `date` before splitting.
+	- Splits are determined by calendar date: ~70% train, ~15% validation, ~15% test.
+	- Actual boundary dates are stored in named variables and printed.
+	- No `date` value appears in more than one split.
+	- Row counts and class distributions are logged for each split.
 
-### 11.5 Engineer per-symbol feature set
+### 10.5 Evaluate a trivial baseline classifier
 
 - **ID**: GH-005
-- **Description**: As a user, I want a rich and consistent feature set so the models can learn trend, momentum, volatility, and liquidity behavior.
+- **Description**: As a user, I want a simple baseline evaluated on both validation and test sets so I can measure genuine model lift.
 - **Acceptance criteria**:
-  - All features defined in sections 5.1 to 5.8 are computed per symbol.
-  - Features are aligned by symbol-date and concatenated into one pooled dataset.
-  - Rows with insufficient lookback history for required features are dropped.
+	- Baseline is defined using training data only (for example, majority-class predictor).
+	- Macro F1, weighted F1, balanced accuracy, per-class precision/recall/F1, and confusion matrix are computed for both validation and test.
+	- Results are stored in `baseline_results` using the same schema as model results.
 
-### 11.6 Construct fixed-threshold 3-class labels
+### 10.6 Define and train the candidate model in a Pipeline
 
 - **ID**: GH-006
-- **Description**: As a user, I want labels based on forward 20-day returns with fixed thresholds so predictions map directly to buy/hold/sell decisions.
+- **Description**: As a user, I want the model and any preprocessing encapsulated in a scikit-learn Pipeline so preprocessing is leakage-safe and the notebook is reproducible.
 - **Acceptance criteria**:
-  - fwd_ret_20d is computed as (close_t+20 / close_t) - 1.
-  - Label rule is fixed: buy if > +5%, sell if < -5%, hold otherwise.
-  - Last 20 rows per symbol are excluded from modeling.
+	- Model class, key hyperparameters, and class weight strategy are documented in the model configuration cell.
+	- `StandardScaler` is included in the Pipeline only for models that require scaling.
+	- Pipeline is fitted on `X_train` and `y_train` only.
+	- Training duration is recorded and printed.
 
-### 11.7 Report class imbalance diagnostics
+### 10.7 Evaluate model performance on the validation set
 
 - **ID**: GH-007
-- **Description**: As a user, I want class distribution diagnostics so I can understand minority class challenges.
+- **Description**: As a user, I want comprehensive validation metrics displayed so I can assess model quality before committing to the test set evaluation.
 - **Acceptance criteria**:
-  - Class proportions are reported globally and by year.
-  - Notebook highlights buy and sell minority class support.
-  - Optional mitigation knobs (class weight usage notes, threshold sensitivity analysis) are shown.
+	- `y_val_pred` is produced via `pipeline.predict(X_val)`.
+	- Computed metrics include macro F1, weighted F1, balanced accuracy, and per-class precision/recall/F1.
+	- Confusion matrix is computed and displayed as a normalized heatmap.
+	- All metrics are stored in `val_metrics` dict.
 
-### 11.8 Use time-aware train/validation/test split
+### 10.8 Evaluate model performance on the hold-out test set
 
 - **ID**: GH-008
-- **Description**: As a user, I want chronological splitting so no future information leaks into training.
+- **Description**: As a user, I want final test-set metrics evaluated so the notebook produces an honest out-of-sample performance estimate.
 - **Acceptance criteria**:
-  - Rows are sorted chronologically before split.
-  - Split proportions target approximately 70/15/15 by time.
-  - Actual cutoff dates are printed.
+	- Test set is not used until after all configuration and hyperparameter decisions are finalized.
+	- The same metric set as validation is computed and stored in `test_metrics`.
+	- Which training data variant was used for the final fit (train only vs train+val) is documented.
 
-### 11.9 Tune with TimeSeriesSplit
+### 10.9 Save standardized evaluation artifacts
 
 - **ID**: GH-009
-- **Description**: As a user, I want time-aware CV during tuning so hyperparameter selection reflects temporal constraints.
+- **Description**: As a user, I want all results saved in a consistent, machine-readable format so a downstream comparison step can load results from all model notebooks without custom parsing.
 - **Acceptance criteria**:
-  - TimeSeriesSplit is used for tuning on training plus validation period only.
-  - Final test data is untouched until final evaluation.
-  - Fold-level validation metrics are logged.
+	- A result dict is built containing `model_name`, `model_type`, `hyperparameters`, `data`, `class_labels`, `baseline`, `metrics`, and `notes` keys.
+	- Result dict is serialized to `3_evaluate_model/{MODEL_NAME}_metrics.json` with Python-native numeric types (no numpy types).
+	- Optional test prediction CSV is saved to `3_evaluate_model/{MODEL_NAME}_test_predictions.csv` with `symbol`, `date`, `y_true`, and `y_pred` columns.
+	- Optional model pickle is saved to `3_evaluate_model/{MODEL_NAME}_model.pkl`.
 
-### 11.10 Compare baseline and candidate models
+### 10.10 Provide a notebook summary and template guidance
 
 - **ID**: GH-010
-- **Description**: As a user, I want a model leaderboard so I can compare algorithms fairly.
+- **Description**: As a user, I want a final summary cell that recaps key metrics and documents how to duplicate the notebook for a different model so the template is self-explanatory.
 - **Acceptance criteria**:
-  - Baseline includes at least majority-class predictor.
-  - Candidate set includes Logistic Regression, Random Forest, Extra Trees, HistGradientBoosting, LinearSVC, and MLP.
-  - Validation leaderboard includes macro F1 and class-wise buy and sell metrics.
+	- Summary cell states chosen model, key hyperparameters, macro F1 and buy/sell F1 for validation and test.
+	- Summary states whether the model beats the baseline and by how much.
+	- Instructions for creating a new model notebook (duplicate, change model class + `MODEL_NAME`) are present.
 
-### 11.11 Apply leakage-safe preprocessing pipelines
+### 10.11 Ensure no data leakage across splits
 
 - **ID**: GH-011
-- **Description**: As a user, I want preprocessing bundled with models so scaling and transforms are fit only on training data.
+- **Description**: As a maintainer, I want explicit guardrails confirming that the validation and test sets are never used during any fitting step so reported metrics are trustworthy.
 - **Acceptance criteria**:
-  - Pipeline is used for models requiring scaling.
-  - Tree models can run without scaling.
-  - No transformation is fit on validation or test subsets directly.
+	- `StandardScaler.fit` (when used) is called only on training data.
+	- `pipeline.fit` is called only with training data.
+	- A sanity check cell confirms no date overlap between splits and prints confirmation.
+	- Any future refit on train+val is documented as a deliberate post-selection step.
 
-### 11.12 Final test evaluation and error analysis
+## 11. Standardized result schema
 
-- **ID**: GH-012
-- **Description**: As a user, I want final hold-out results and error patterns so I can judge real-world readiness.
-- **Acceptance criteria**:
-  - Finalists are refit on training plus validation only.
-  - Test report includes macro F1, weighted F1, balanced accuracy, class-wise precision/recall/F1, and confusion matrix.
-  - Misclassification patterns (especially buy vs hold and sell vs hold) are summarized.
+### 11.1 Result dictionary structure
 
-### 11.13 Include strategy diagnostics
+The following top-level keys are required in the result dict written to `{MODEL_NAME}_metrics.json`:
 
-- **ID**: GH-013
-- **Description**: As a user, I want a simple action-based performance view so I can contextualize model predictions in trading terms.
-- **Acceptance criteria**:
-  - Predicted labels map to long/flat/short actions.
-  - Test-period cumulative return curve is computed and displayed with stated assumptions.
-  - Diagnostic is marked as simplified and non-production.
+- **model_name**: String matching `MODEL_NAME` configuration variable.
+- **model_type**: Full scikit-learn class path string (for example, `sklearn.ensemble.HistGradientBoostingClassifier`).
+- **hyperparameters**: Dict returned by `model.get_params()` (Python-native types only).
+- **data**: Dict with `train_start`, `train_end`, `val_start`, `val_end`, `test_start`, `test_end`, `n_train`, `n_val`, `n_test` keys.
+- **class_labels**: Fixed list `["buy", "hold", "sell"]`.
+- **baseline**: Dict with `val` and `test` keys, each containing the full metric set.
+- **metrics**: Dict with `val` and `test` keys, each containing the full metric set.
+- **notes**: Dict with `threshold_buy`, `threshold_sell`, `label_definition`, and `class_weight_strategy` keys.
 
-### 11.14 Protect configuration and secrets
+### 11.2 Metric set schema (per split)
 
-- **ID**: GH-014
-- **Description**: As a maintainer, I want secure handling of credentials so sensitive data is not exposed.
-- **Acceptance criteria**:
-  - Secrets are loaded from config.py or environment variables.
-  - Notebook does not print full secret values.
-  - Missing credentials produce actionable validation messages.
+Each metric set (validation or test) must contain:
 
-### 11.15 Produce final model recommendation output
+- **macro_f1**: Macro-averaged F1 score.
+- **weighted_f1**: Weighted-averaged F1 score.
+- **balanced_accuracy**: Balanced accuracy score.
+- **per_class**: Nested dict keyed by `buy`, `hold`, `sell`, each with `precision`, `recall`, and `f1` keys.
+- **confusion_matrix**: 2D list of integer counts (row = true label, column = predicted label, order matching `class_labels`).
 
-- **ID**: GH-015
-- **Description**: As a user, I want a final explicit recommendation so I know exactly which model to deploy for the 1-month direction task.
-- **Acceptance criteria**:
-  - Notebook ends with a recommendation block naming the chosen model.
-  - Recommendation block states why this model was selected versus alternatives (macro F1, buy/sell class metrics, stability across folds, and complexity/runtime trade-off).
-  - Recommendation block includes full reproducible parameter dictionary for the selected model.
-  - Recommendation block includes runner-up model and the metric deltas to make the decision transparent.
+### 11.3 File naming convention
 
-After generating the PRD, I will ask if you want to proceed with creating GitHub issues for the user stories. If you agree, I will create them and provide you with the links.
+- JSON metrics: `1-month-direction-classifier/3_evaluate_model/{MODEL_NAME}_metrics.json`
+- Test predictions CSV: `1-month-direction-classifier/3_evaluate_model/{MODEL_NAME}_test_predictions.csv`
+- Model pickle: `1-month-direction-classifier/3_evaluate_model/{MODEL_NAME}_model.pkl`

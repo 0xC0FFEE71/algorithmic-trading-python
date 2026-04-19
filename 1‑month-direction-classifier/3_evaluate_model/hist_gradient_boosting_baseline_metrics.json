@@ -1,0 +1,209 @@
+{
+  "model_name": "hist_gradient_boosting_baseline",
+  "model_type": "sklearn.ensemble._hist_gradient_boosting.gradient_boosting.HistGradientBoostingClassifier",
+  "hyperparameters": {
+    "categorical_features": "from_dtype",
+    "class_weight": null,
+    "early_stopping": false,
+    "interaction_cst": null,
+    "l2_regularization": 0.1,
+    "learning_rate": 0.05,
+    "loss": "log_loss",
+    "max_bins": 255,
+    "max_depth": 6,
+    "max_features": 1.0,
+    "max_iter": 500,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 20,
+    "monotonic_cst": null,
+    "n_iter_no_change": 10,
+    "random_state": 42,
+    "scoring": "loss",
+    "tol": 1e-07,
+    "validation_fraction": 0.1,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "data": {
+    "train_start": "2021-02-01T00:00:00",
+    "train_end": "2024-09-03T00:00:00",
+    "val_start": "2024-09-04T00:00:00",
+    "val_end": "2025-06-11T00:00:00",
+    "test_start": "2025-06-12T00:00:00",
+    "test_end": "2026-03-19T00:00:00",
+    "n_train": 2709,
+    "n_val": 579,
+    "n_test": 579
+  },
+  "class_labels": [
+    "buy",
+    "hold",
+    "sell"
+  ],
+  "baseline": {
+    "val": {
+      "macro_f1": 0.1731,
+      "weighted_f1": 0.182,
+      "balanced_accuracy": 0.3333,
+      "per_class": {
+        "buy": {
+          "precision": 0.3506,
+          "recall": 1.0,
+          "f1": 0.5192
+        },
+        "hold": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "sell": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          203,
+          0,
+          0
+        ],
+        [
+          211,
+          0,
+          0
+        ],
+        [
+          165,
+          0,
+          0
+        ]
+      ]
+    },
+    "test": {
+      "macro_f1": 0.1574,
+      "weighted_f1": 0.146,
+      "balanced_accuracy": 0.3333,
+      "per_class": {
+        "buy": {
+          "precision": 0.3092,
+          "recall": 1.0,
+          "f1": 0.4723
+        },
+        "hold": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "sell": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          179,
+          0,
+          0
+        ],
+        [
+          269,
+          0,
+          0
+        ],
+        [
+          131,
+          0,
+          0
+        ]
+      ]
+    }
+  },
+  "metrics": {
+    "val": {
+      "macro_f1": 0.4086,
+      "weighted_f1": 0.4101,
+      "balanced_accuracy": 0.4073,
+      "per_class": {
+        "buy": {
+          "precision": 0.4709,
+          "recall": 0.4384,
+          "f1": 0.4541
+        },
+        "hold": {
+          "precision": 0.3723,
+          "recall": 0.4076,
+          "f1": 0.3891
+        },
+        "sell": {
+          "precision": 0.3899,
+          "recall": 0.3758,
+          "f1": 0.3827
+        }
+      },
+      "confusion_matrix": [
+        [
+          89,
+          84,
+          30
+        ],
+        [
+          58,
+          86,
+          67
+        ],
+        [
+          42,
+          61,
+          62
+        ]
+      ]
+    },
+    "test": {
+      "macro_f1": 0.3523,
+      "weighted_f1": 0.3875,
+      "balanced_accuracy": 0.3503,
+      "per_class": {
+        "buy": {
+          "precision": 0.4211,
+          "recall": 0.3128,
+          "f1": 0.359
+        },
+        "hold": {
+          "precision": 0.4732,
+          "recall": 0.5242,
+          "f1": 0.4974
+        },
+        "sell": {
+          "precision": 0.1892,
+          "recall": 0.2137,
+          "f1": 0.2007
+        }
+      },
+      "confusion_matrix": [
+        [
+          56,
+          81,
+          42
+        ],
+        [
+          50,
+          141,
+          78
+        ],
+        [
+          27,
+          76,
+          28
+        ]
+      ]
+    }
+  },
+  "notes": {
+    "threshold_buy": 0.05,
+    "threshold_sell": -0.05,
+    "label_definition": "buy if fwd_ret_20d >= 0.05; sell if fwd_ret_20d <= -0.05; hold otherwise",
+    "class_weight_strategy": "none - HistGradientBoostingClassifier does not support class_weight; macro F1 used as primary metric"
+  }
+}
