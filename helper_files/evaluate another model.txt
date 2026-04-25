@@ -1,0 +1,3 @@
+evaluate_model_ExtraTrees.ipynb is a duplicate of evaluate_model_HistGradientBoosting.ipynb. It currently evaluates the HistGradientBoostingClassifier model. rewrite the notebook so it evaluates the ExtraTrees model. please see also section ## 11.2 of this notebook and the attached PRD describing the overall objective. make all necessary changes to evaluate the ExtraTrees model. write the code into the respective code cells, test run all cells and apply necessary changes in case of errors. 
+
+Now that the notebook evaluates the ExtraTrees model, can you please check if all markdown cells reflect this correctly and update them if necessary?
