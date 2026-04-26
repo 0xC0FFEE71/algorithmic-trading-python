@@ -1,0 +1,275 @@
+{
+  "generated_at_utc": "2026-04-26T16:21:41.927345+00:00",
+  "notebook_name": "4_select_model.ipynb",
+  "models": [
+    {
+      "model_name": "extra_trees_baseline",
+      "model_type": "sklearn.ensemble._forest.ExtraTreesClassifier",
+      "val_macro_f1": 0.4263,
+      "test_macro_f1": 0.3076,
+      "val_weighted_f1": 0.432,
+      "test_weighted_f1": 0.36,
+      "val_balanced_accuracy": 0.43,
+      "test_balanced_accuracy": 0.3268,
+      "val_f1_buy": 0.4246,
+      "test_f1_buy": 0.171,
+      "val_f1_sell": 0.3554,
+      "test_f1_sell": 0.1767,
+      "val_recall_buy": 0.3744,
+      "test_recall_buy": 0.1285,
+      "val_recall_sell": 0.3091,
+      "test_recall_sell": 0.1679,
+      "rank_val_macro_f1": 1,
+      "rank_test_macro_f1": 5,
+      "flag_instability": true,
+      "eligible_for_tuning": false,
+      "eligibility_reason_code": "fail_test_f1_buy|fail_test_recall_buy|flag_instability",
+      "is_baseline": true,
+      "already_tuned": false,
+      "selected_for_tuning": false,
+      "is_provisional_production_candidate": false,
+      "decision_rationale": "not_selected|fail_test_f1_buy|fail_test_recall_buy|flag_instability"
+    },
+    {
+      "model_name": "random_forest_baseline",
+      "model_type": "sklearn.ensemble._forest.RandomForestClassifier",
+      "val_macro_f1": 0.415,
+      "test_macro_f1": 0.2679,
+      "val_weighted_f1": 0.4159,
+      "test_weighted_f1": 0.3173,
+      "val_balanced_accuracy": 0.4208,
+      "test_balanced_accuracy": 0.2878,
+      "val_f1_buy": 0.3792,
+      "test_f1_buy": 0.1061,
+      "val_f1_sell": 0.4098,
+      "test_f1_sell": 0.1661,
+      "val_recall_buy": 0.3054,
+      "test_recall_buy": 0.0782,
+      "val_recall_sell": 0.4545,
+      "test_recall_sell": 0.1756,
+      "rank_val_macro_f1": 2,
+      "rank_test_macro_f1": 6,
+      "flag_instability": true,
+      "eligible_for_tuning": false,
+      "eligibility_reason_code": "fail_test_f1_buy|fail_test_recall_buy|flag_instability",
+      "is_baseline": true,
+      "already_tuned": false,
+      "selected_for_tuning": false,
+      "is_provisional_production_candidate": false,
+      "decision_rationale": "not_selected|fail_test_f1_buy|fail_test_recall_buy|flag_instability"
+    },
+    {
+      "model_name": "hist_gradient_boosting_baseline",
+      "model_type": "sklearn.ensemble._hist_gradient_boosting.gradient_boosting.HistGradientBoostingClassifier",
+      "val_macro_f1": 0.4086,
+      "test_macro_f1": 0.3523,
+      "val_weighted_f1": 0.4101,
+      "test_weighted_f1": 0.3875,
+      "val_balanced_accuracy": 0.4073,
+      "test_balanced_accuracy": 0.3503,
+      "val_f1_buy": 0.4541,
+      "test_f1_buy": 0.359,
+      "val_f1_sell": 0.3827,
+      "test_f1_sell": 0.2007,
+      "val_recall_buy": 0.4384,
+      "test_recall_buy": 0.3128,
+      "val_recall_sell": 0.3758,
+      "test_recall_sell": 0.2137,
+      "rank_val_macro_f1": 3,
+      "rank_test_macro_f1": 2,
+      "flag_instability": true,
+      "eligible_for_tuning": false,
+      "eligibility_reason_code": "flag_instability",
+      "is_baseline": true,
+      "already_tuned": false,
+      "selected_for_tuning": false,
+      "is_provisional_production_candidate": false,
+      "decision_rationale": "not_selected|flag_instability"
+    },
+    {
+      "model_name": "mlp_classifier_baseline",
+      "model_type": "sklearn.neural_network._multilayer_perceptron.MLPClassifier",
+      "val_macro_f1": 0.3398,
+      "test_macro_f1": 0.3617,
+      "val_weighted_f1": 0.347,
+      "test_weighted_f1": 0.3692,
+      "val_balanced_accuracy": 0.3478,
+      "test_balanced_accuracy": 0.3786,
+      "val_f1_buy": 0.4662,
+      "test_f1_buy": 0.4449,
+      "val_f1_sell": 0.2261,
+      "test_f1_sell": 0.2762,
+      "val_recall_buy": 0.5271,
+      "test_recall_buy": 0.5754,
+      "val_recall_sell": 0.1939,
+      "test_recall_sell": 0.2519,
+      "rank_val_macro_f1": 4,
+      "rank_test_macro_f1": 1,
+      "flag_instability": false,
+      "eligible_for_tuning": true,
+      "eligibility_reason_code": "pass",
+      "is_baseline": true,
+      "already_tuned": false,
+      "selected_for_tuning": true,
+      "is_provisional_production_candidate": true,
+      "decision_rationale": "selected_for_tuning|provisional_production_candidate|pass"
+    },
+    {
+      "model_name": "logistic_regression_baseline",
+      "model_type": "sklearn.linear_model._logistic.LogisticRegression",
+      "val_macro_f1": 0.3112,
+      "test_macro_f1": 0.3311,
+      "val_weighted_f1": 0.3113,
+      "test_weighted_f1": 0.3789,
+      "val_balanced_accuracy": 0.3279,
+      "test_balanced_accuracy": 0.3378,
+      "val_f1_buy": 0.1662,
+      "test_f1_buy": 0.2919,
+      "val_f1_sell": 0.3344,
+      "test_f1_sell": 0.1558,
+      "val_recall_buy": 0.133,
+      "test_recall_buy": 0.2626,
+      "val_recall_sell": 0.3152,
+      "test_recall_sell": 0.1374,
+      "rank_val_macro_f1": 5,
+      "rank_test_macro_f1": 3,
+      "flag_instability": true,
+      "eligible_for_tuning": false,
+      "eligibility_reason_code": "flag_instability",
+      "is_baseline": true,
+      "already_tuned": false,
+      "selected_for_tuning": false,
+      "is_provisional_production_candidate": false,
+      "decision_rationale": "not_selected|flag_instability"
+    },
+    {
+      "model_name": "linear_svc_baseline",
+      "model_type": "sklearn.svm._classes.LinearSVC",
+      "val_macro_f1": 0.3072,
+      "test_macro_f1": 0.3142,
+      "val_weighted_f1": 0.3074,
+      "test_weighted_f1": 0.3657,
+      "val_balanced_accuracy": 0.3369,
+      "test_balanced_accuracy": 0.3284,
+      "val_f1_buy": 0.131,
+      "test_f1_buy": 0.2353,
+      "val_f1_sell": 0.3355,
+      "test_f1_sell": 0.1498,
+      "val_recall_buy": 0.0936,
+      "test_recall_buy": 0.1899,
+      "val_recall_sell": 0.3152,
+      "test_recall_sell": 0.1298,
+      "rank_val_macro_f1": 6,
+      "rank_test_macro_f1": 4,
+      "flag_instability": true,
+      "eligible_for_tuning": false,
+      "eligibility_reason_code": "fail_test_f1_sell|fail_test_recall_sell|flag_instability",
+      "is_baseline": true,
+      "already_tuned": false,
+      "selected_for_tuning": false,
+      "is_provisional_production_candidate": false,
+      "decision_rationale": "not_selected|fail_test_f1_sell|fail_test_recall_sell|flag_instability"
+    }
+  ],
+  "tuning_candidates": [
+    "mlp_classifier_baseline"
+  ],
+  "provisional_production_candidate": "mlp_classifier_baseline",
+  "selection_rules": {
+    "primary_metric": "test_macro_f1",
+    "constraints": {
+      "min_test_f1_buy": 0.2,
+      "min_test_f1_sell": 0.15,
+      "stability_delta_threshold": 0.05
+    },
+    "secondary_criteria": [
+      "model_simplicity",
+      "training_time",
+      "inference_cost"
+    ]
+  },
+  "decision_policy_note": "Top eligible model treated as clearly superior under configured dominance margin.",
+  "tuning_recommendations": {
+    "mlp_classifier_baseline": {
+      "model_type": "sklearn.neural_network._multilayer_perceptron.MLPClassifier",
+      "template_key": "MLPClassifier",
+      "current_hyperparameters": {
+        "activation": "relu",
+        "alpha": 0.001,
+        "batch_size": 64,
+        "beta_1": 0.9,
+        "beta_2": 0.999,
+        "early_stopping": false,
+        "epsilon": 1e-08,
+        "hidden_layer_sizes": [
+          64,
+          32
+        ],
+        "learning_rate": "constant",
+        "learning_rate_init": 0.001,
+        "max_fun": 15000,
+        "max_iter": 500,
+        "momentum": 0.9,
+        "n_iter_no_change": 10,
+        "nesterovs_momentum": true,
+        "power_t": 0.5,
+        "random_state": 42,
+        "shuffle": true,
+        "solver": "adam",
+        "tol": 0.0001,
+        "validation_fraction": 0.1,
+        "verbose": false,
+        "warm_start": false
+      },
+      "recommended_search_space": {
+        "hidden_layer_sizes": [
+          [
+            64
+          ],
+          [
+            128
+          ],
+          [
+            64,
+            32
+          ],
+          [
+            128,
+            64
+          ]
+        ],
+        "alpha": [
+          0.0001,
+          0.001,
+          0.01
+        ],
+        "learning_rate_init": [
+          0.0005,
+          0.001,
+          0.003
+        ],
+        "batch_size": [
+          32,
+          64,
+          128
+        ],
+        "early_stopping": [
+          true
+        ]
+      },
+      "budget_preset": "medium",
+      "budget_details": {
+        "n_iter": 50,
+        "grid_size": "standard"
+      },
+      "search_method": "RandomizedSearchCV",
+      "time_series_cv": {
+        "strategy": "TimeSeriesSplit",
+        "n_splits": 4
+      },
+      "scoring_metric": "f1_macro",
+      "selection_rule": "Keep hyperparameters with best validation macro F1"
+    }
+  },
+  "notes": "All models currently baseline; tuning to follow in dedicated notebook."
+}
